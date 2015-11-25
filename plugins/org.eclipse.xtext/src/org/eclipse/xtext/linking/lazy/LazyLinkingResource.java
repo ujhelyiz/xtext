@@ -94,6 +94,7 @@ public class LazyLinkingResource extends XtextResource {
 	private LinkingHelper linkingHelper;
 
 	private boolean eagerLinking = false;
+	private boolean suppressResolutionEvents = true;
 
 	@Override
 	protected void doLoad(InputStream inputStream, Map<?, ?> options) throws IOException {
@@ -168,11 +169,15 @@ public class LazyLinkingResource extends XtextResource {
 						if (getEncoder().isCrossLinkFragment(this, fragment)) {
 							EObject target = getEObject(fragment);
 							if (target != null) {
-								try {
-									source.eSetDeliver(false);
+								if (suppressResolutionEvents) {
+									try {
+										source.eSetDeliver(false);
+										list.setUnique(i, target);
+									} finally {
+										source.eSetDeliver(true);
+									}
+								} else {
 									list.setUnique(i, target);
-								} finally {
-									source.eSetDeliver(true);
 								}
 							}
 						}
@@ -188,11 +193,15 @@ public class LazyLinkingResource extends XtextResource {
 					if (getEncoder().isCrossLinkFragment(this, fragment)) {
 						EObject target = getEObject(fragment);
 						if (target != null) {
-							try {
-								source.eSetDeliver(false);
+							if (suppressResolutionEvents) {
+								try {
+									source.eSetDeliver(false);
+									source.eSet(crossRef, target);
+								} finally {
+									source.eSetDeliver(true);
+								}
+							} else {
 								source.eSet(crossRef, target);
-							} finally {
-								source.eSetDeliver(true);
 							}
 						}
 					}
@@ -439,6 +448,23 @@ public class LazyLinkingResource extends XtextResource {
 
 	public boolean isEagerLinking() {
 		return eagerLinking;
+	}
+	
+	/**
+	 * @since 2.10
+	 */
+	public boolean isSuppressResolutionEvents() {
+		return suppressResolutionEvents;
+	}
+
+	/**
+	 * For performance considerations no EMF notifications are sent when resolving cross-resource proxy references. If all notification
+	 * messages are needed for the client, calling this method with a 'false' parameter disables this functionality for a performance cost.
+	 * 
+	 * @since 2.10
+	 */
+	public void setSuppressResolutionEvents(boolean suppressResolutionEvents) {
+		this.suppressResolutionEvents = suppressResolutionEvents;
 	}
 
 	public ILinkingDiagnosticMessageProvider getDiagnosticMessageProvider() {
